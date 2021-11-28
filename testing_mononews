@@ -1,0 +1,128 @@
+#monnonews_with_date_check_2_10
+
+import datetime
+from datetime import datetime
+from time import sleep
+import csv
+from csv import reader
+import re
+import locale
+import time
+import requests
+import time
+import bs4
+import sys
+import pandas as pd
+from bs4 import BeautifulSoup
+from datetime import timedelta
+from random import randint
+from lxml.html import fromstring
+from itertools import cycle
+import traceback
+
+# start timing
+start = time.time()
+
+urls = ['https://www.mononews.gr/category/agores',
+       'https://www.mononews.gr/category/business',
+       'https://www.mononews.gr/category/trapezes',
+       'https://www.mononews.gr/category/politics',
+       'https://www.mononews.gr/category/agores',
+       'https://www.mononews.gr/category/bloomberg',
+       'https://www.mononews.gr/category/cryptocurrencies',
+       'https://www.mononews.gr/category/oikonomia/thewiseman'
+       ]
+
+
+def creatdatefunction():
+    locale.setlocale(locale.LC_TIME, 'el_GR')
+    today_date = datetime.now().strftime("%d %B %Y")
+    print(today_date)
+    c = today_date.split()
+    #print(c)
+    return c  
+
+#def get_proxies():
+
+
+def transform(url):
+    headers = {"user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"}
+    page = requests.get(url, headers=headers)
+    soup = BeautifulSoup(page.content, "lxml")
+    return soup
+
+def getnews(soup):
+    all_news = []
+    newsitem_data={}
+    newsitems = soup.find_all('div', {'class':'article type8 xsHalf'})
+    for newsitem in newsitems:
+      try:
+          newsitem_data = {
+              'newsitem_publdate' : newsitem.find('div', {'class':'wrp'}).text,
+              'newsitem_title' : newsitem.find('div', {'class':'heading'}).get_text(),
+              'newsitem_link' : url+newsitem.find('a')['href'],               
+              'newsitem_desc' : newsitem.find('div', {'class':'txt'}).find('p').text,
+          }
+
+      except:
+        pass
+      all_news.append(newsitem_data)
+    #print(all_news)
+    return all_news
+
+def transdate(k):
+    ldate = ['Ιανουαρίου','Φεβρουαρίου','Μαρτίου','Απριλίου','Μαΐου','Ιουνίου',
+             'Ιουλίου','Αυγούστου','Σεπτεμβρίου','Οκτωβρίου','Νοεμβρίου','Δεκεμβρίου']
+    for i in range(len(ldate)):
+        if k ==ldate[i]:
+            q = str(i+1)
+            break
+    return q
+
+def output(all_news):
+    x = datetime.now().strftime("%d %m %Y")
+    print(x)
+    df = pd.DataFrame(all_news)  
+    g = df['newsitem_publdate'][0]
+    print('df date..',g)
+    l = g[0:-6]
+    s = l.split()
+    u = transdate(s[1])
+    s[1] = u
+    
+    if int(s[0])<10:
+        s[0]='0'+s[0]
+    s = ' '.join(s)
+    print(s)
+    if s==x:
+        print('ok')
+        df.to_csv('mononews_output.csv', index=False, encoding='utf8')
+    # another way of csv writing
+        fieldnames = ['Date', 'Article_Title', 'Link', 'Publication_Date', 'Article_Description']
+  
+        with open('mononews' + '.csv', mode='a', encoding='UTF8', newline='') as csvfile:
+            writer=csv.writer(csvfile)
+         # write the header
+            writer.writerow(fieldnames)
+     # write the data
+            writer.writerow(all_news)
+      #writer=csv.DictWriter(csvfile, fieldnames=fieldnames)
+      #writer.writeheader()
+      #writer.writerow(all_news) 
+        csvfile.close() 
+        #print('results written to ' + str(urls) + 'csv file')
+    return df
+
+if __name__ == '__main__':
+  for url in urls:
+    k=transform(url)
+    l=getnews(k)
+    df = output(l)
+    #print(df['newsitem_publdate'])
+
+#count time elapsed
+end = time.time()
+tm = end - start
+print('='*32)
+print("Time elapsed is %f seconds" %(tm))
+print('='*32)
